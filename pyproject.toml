@@ -1,0 +1,12 @@
+[project]
+name = "mcp-surf-demo"
+version = "0.1.0"
+description = "Python client that connects to Gemini and uses MCP protocol to consult webpages via Browserbase"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp[cli]>=1.9.1",
+    "google-generativeai>=0.8.0",
+    "python-dotenv>=1.0.0",
+    "rich>=13.0.0",
+]
