@@ -4,6 +4,11 @@ Simple Gemini + MCP integration test - just tests basic function calling without
 """
 
 import asyncio
+import sys
+import os
+
+# Add parent directory to path to import main
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from main import MCPSurfClient
 
 async def test_simple_chat():

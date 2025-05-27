@@ -43,7 +43,7 @@ class MCPSurfClient:
             sys.exit(1)
         
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self.model = genai.GenerativeModel('gemini-1.5-pro-latest')
     
     def _prepare_env(self) -> Dict[str, str]:
         """Prepare environment variables for MCP server."""
@@ -124,78 +124,20 @@ class MCPSurfClient:
             self.console.print(f"[red]❌ Error calling tool {tool_name}: {e}[/red]")
             raise
     
-    def create_tool_functions_for_gemini(self) -> List[Any]:
+    def create_tool_functions_for_gemini(self) -> List[Dict[str, Any]]:
         """Convert MCP tools to Gemini function calling format."""
-        from google.generativeai.types import FunctionDeclaration, Tool
+        gemini_tools = []
         
-        # Create simplified function declarations for key tools only
-        function_declarations = [
-            FunctionDeclaration(
-                name="browserbase_navigate",
-                description="Navigate to a URL",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "url": {
-                            "type": "string",
-                            "description": "The URL to navigate to"
-                        }
-                    },
-                    "required": ["url"]
-                }
-            ),
-            FunctionDeclaration(
-                name="browserbase_take_screenshot",
-                description="Take a screenshot of the current page",
-                parameters={
-                    "type": "object",
-                    "properties": {}
-                }
-            ),
-            FunctionDeclaration(
-                name="browserbase_get_text",
-                description="Extract text content from the page",
-                parameters={
-                    "type": "object",
-                    "properties": {}
-                }
-            ),
-            FunctionDeclaration(
-                name="browserbase_click",
-                description="Click on an element on the page",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "ref": {
-                            "type": "string",
-                            "description": "Reference to the element to click"
-                        }
-                    },
-                    "required": ["ref"]
-                }
-            ),
-            FunctionDeclaration(
-                name="browserbase_type",
-                description="Type text into an element",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "ref": {
-                            "type": "string",
-                            "description": "Reference to the element to type into"
-                        },
-                        "text": {
-                            "type": "string",
-                            "description": "Text to type"
-                        }
-                    },
-                    "required": ["ref", "text"]
-                }
-            )
-        ]
+        for tool in self.available_tools:
+            # Convert MCP tool schema to Gemini function declaration
+            function_declaration = {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.inputSchema if hasattr(tool, 'inputSchema') else {"type": "object", "properties": {}}
+            }
+            gemini_tools.append(function_declaration)
         
-        # Return a single Tool object containing the function declarations
-        return [Tool(function_declarations=function_declarations)]
+        return gemini_tools
     
     async def handle_function_call(self, session: ClientSession, function_call) -> str:
         """Handle a function call from Gemini."""
@@ -253,10 +195,15 @@ class MCPSurfClient:
                             # Execute the function call
                             function_result = await self.handle_function_call(session, part.function_call)
                             
-                            # Send the result back to Gemini with a simple text response
-                            response = chat.send_message(
-                                f"Function {part.function_call.name} executed successfully. Result: {function_result}"
-                            )
+                            # Send the result back to Gemini
+                            response = chat.send_message([
+                                {
+                                    "function_response": {
+                                        "name": part.function_call.name,
+                                        "response": {"result": function_result}
+                                    }
+                                }
+                            ])
                 
                 return response.text
                 

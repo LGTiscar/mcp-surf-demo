@@ -10,6 +10,24 @@ A Python client that connects to Google's Gemini AI and uses the Model Context P
 - 🔍 Intelligent webpage analysis and data extraction
 - 💬 Interactive chat interface with web browsing capabilities
 
+## Project Structure
+
+```
+mcp-surf-demo/
+├── main.py              # Main application entry point
+├── config.py            # Configuration helper and setup wizard
+├── basic_demo.py        # Basic MCP demo without AI
+├── tests/               # Test files
+│   ├── __init__.py      # Test package initialization
+│   ├── test.py          # Comprehensive test suite
+│   └── simple_test.py   # Simple integration test
+├── README.md            # This file
+├── GETTING_STARTED.md   # Detailed setup guide
+├── pyproject.toml       # Project dependencies
+├── .env.example         # Environment variables template
+└── .gitignore           # Git ignore rules
+```
+
 ## Prerequisites
 
 1. **Google Gemini API Key**: Get one from [Google AI Studio](https://makersuite.google.com/app/apikey)
