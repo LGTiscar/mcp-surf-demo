@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Basic MCP Demo - Test the Browserbase MCP server directly without Gemini.
+Basic MCP Demo - Test the Fetch-Browser MCP server directly without Gemini.
 
 This script demonstrates how to use the MCP server directly for web automation.
 """
@@ -23,7 +23,7 @@ from mcp.client.stdio import stdio_client
 
 
 class BasicMCPDemo:
-    """A basic demo that uses MCP directly without AI."""
+    """A basic demo that uses Fetch-Browser MCP directly without AI."""
     
     def __init__(self):
         self.console = Console()
@@ -32,38 +32,20 @@ class BasicMCPDemo:
     
     def _prepare_env(self) -> Dict[str, str]:
         """Prepare environment variables for MCP server."""
-        api_key = os.getenv("BROWSERBASE_API_KEY")
-        project_id = os.getenv("BROWSERBASE_PROJECT_ID")
-        
-        if not api_key or api_key == "your_browserbase_api_key_here":
-            self.console.print("[red]❌ BROWSERBASE_API_KEY not configured[/red]")
-            return None
-        
-        if not project_id or project_id == "your_browserbase_project_id_here":
-            self.console.print("[red]❌ BROWSERBASE_PROJECT_ID not configured[/red]")
-            return None
-        
-        env = os.environ.copy()
-        env.update({
-            "BROWSERBASE_API_KEY": api_key,
-            "BROWSERBASE_PROJECT_ID": project_id,
-        })
-        
-        return env
+        # Fetch-Browser doesn't require API keys, just return the base environment
+        return os.environ.copy()
     
     async def connect_to_mcp(self) -> bool:
-        """Connect to the Browserbase MCP server."""
+        """Connect to the Fetch-Browser MCP server."""
         try:
-            self.console.print("[yellow]🔌 Connecting to Browserbase MCP server...[/yellow]")
+            self.console.print("[yellow]🔌 Connecting to Fetch-Browser MCP server...[/yellow]")
             
             env = self._prepare_env()
-            if not env:
-                return False
             
             # Start MCP server
             server_params = StdioServerParameters(
-                command="npx",
-                args=["@browserbasehq/mcp"],
+                command="node",
+                args=["/Users/lgarciat-local/Dev/PERSONAL/fetch-browser/build/index.js"],
                 env=env
             )
             
@@ -98,12 +80,10 @@ class BasicMCPDemo:
     async def _execute_with_mcp(self, func):
         """Execute a function with an active MCP connection."""
         env = self._prepare_env()
-        if not env:
-            raise RuntimeError("Environment not configured properly")
         
         server_params = StdioServerParameters(
-            command="npx",
-            args=["@browserbasehq/mcp"],
+            command="node",
+            args=["/Users/lgarciat-local/Dev/PERSONAL/fetch-browser/build/index.js"],
             env=env
         )
         
@@ -129,39 +109,50 @@ class BasicMCPDemo:
         """Demonstrate basic web browsing capabilities."""
         self.console.print(Panel(
             "[bold cyan]🌐 Basic Web Browsing Demo[/bold cyan]\n\n"
-            "This demo will show you how to use MCP tools directly for web automation.",
+            "This demo will show you how to use Fetch-Browser MCP tools for web automation.",
             title="Demo",
             border_style="cyan"
         ))
         
         try:
-            # Step 1: Navigate to a website
-            url = "https://example.com"
-            self.console.print(f"\n[cyan]📍 Step 1: Navigating to {url}[/cyan]")
+            # Step 1: Search Google
+            query = "Python MCP servers"
+            self.console.print(f"\n[cyan]🔍 Step 1: Searching Google for '{query}'[/cyan]")
             
-            result = await self.call_tool("browserbase_navigate", {"url": url})
-            self.console.print("[green]✅ Navigation successful![/green]")
+            result = await self.call_tool("google_search", {
+                "query": query,
+                "maxResults": 5,
+                "responseType": "text"
+            })
             
-            # Step 2: Take a screenshot
-            self.console.print(f"\n[cyan]📸 Step 2: Taking a screenshot[/cyan]")
-            
-            result = await self.call_tool("browserbase_take_screenshot", {})
-            self.console.print("[green]✅ Screenshot captured![/green]")
-            
-            # Step 3: Get page text
-            self.console.print(f"\n[cyan]📄 Step 3: Extracting page text[/cyan]")
-            
-            result = await self.call_tool("browserbase_get_text", {})
             if hasattr(result, 'content') and result.content:
                 content_text = ""
                 for content in result.content:
                     if hasattr(content, 'text'):
                         content_text += content.text
                 
-                # Show first 200 characters
-                preview = content_text[:200] + "..." if len(content_text) > 200 else content_text
-                self.console.print(f"[green]✅ Text extracted![/green]")
+                # Show first 300 characters
+                preview = content_text[:300] + "..." if len(content_text) > 300 else content_text
+                self.console.print(f"[green]✅ Search results retrieved![/green]")
                 self.console.print(f"[dim]Preview: {preview}[/dim]")
+            
+            # Step 2: Fetch a specific webpage
+            url = "https://httpbin.org/json"
+            self.console.print(f"\n[cyan]📄 Step 2: Fetching content from {url}[/cyan]")
+            
+            result = await self.call_tool("fetch_url", {
+                "url": url,
+                "responseType": "text"
+            })
+            
+            if hasattr(result, 'content') and result.content:
+                content_text = ""
+                for content in result.content:
+                    if hasattr(content, 'text'):
+                        content_text += content.text
+                
+                self.console.print(f"[green]✅ Content fetched![/green]")
+                self.console.print(f"[dim]Content: {content_text}[/dim]")
             
             self.console.print(f"\n[green]🎉 Demo completed successfully![/green]")
             
@@ -171,11 +162,11 @@ class BasicMCPDemo:
     async def interactive_mode(self):
         """Interactive mode for manual tool testing."""
         self.console.print(Panel(
-            "[bold cyan]🎮 Interactive MCP Tool Testing[/bold cyan]\n\n"
-            "You can now test MCP tools manually. Available commands:\n"
-            "• navigate <url> - Navigate to a URL\n"
-            "• screenshot - Take a screenshot\n"
-            "• text - Get page text\n"
+            "[bold cyan]🎮 Interactive Fetch-Browser Tool Testing[/bold cyan]\n\n"
+            "You can now test Fetch-Browser MCP tools manually. Available commands:\n"
+            "• search <query> - Search Google for a query\n"
+            "• fetch <url> - Fetch content from a URL\n"
+            "• news <query> - Search for news about a topic\n"
             "• quit - Exit interactive mode",
             title="Interactive Mode",
             border_style="cyan"
@@ -183,25 +174,60 @@ class BasicMCPDemo:
         
         while True:
             try:
-                command = Prompt.ask("\n[bold green]Enter command[/bold green]").strip().lower()
+                command = Prompt.ask("\n[bold green]Enter command[/bold green]", default="quit").strip()
                 
-                if command == "quit":
+                if command.lower() == "quit":
                     break
-                elif command.startswith("navigate "):
-                    url = command[9:].strip()
+                elif command.lower().startswith("search "):
+                    query = command[7:].strip()
+                    if query:
+                        result = await self.call_tool("google_search", {
+                            "query": query,
+                            "maxResults": 5,
+                            "responseType": "text"
+                        })
+                        self.console.print(f"[green]✅ Search completed for '{query}'[/green]")
+                        if hasattr(result, 'content') and result.content:
+                            for content in result.content:
+                                if hasattr(content, 'text'):
+                                    preview = content.text[:500] + "..." if len(content.text) > 500 else content.text
+                                    self.console.print(f"[dim]{preview}[/dim]")
+                    else:
+                        self.console.print("[red]❌ Please provide a search query[/red]")
+                elif command.lower().startswith("fetch "):
+                    url = command[6:].strip()
                     if url:
-                        await self.call_tool("browserbase_navigate", {"url": url})
-                        self.console.print(f"[green]✅ Navigated to {url}[/green]")
+                        result = await self.call_tool("fetch_url", {
+                            "url": url,
+                            "responseType": "text"
+                        })
+                        self.console.print(f"[green]✅ Content fetched from {url}[/green]")
+                        if hasattr(result, 'content') and result.content:
+                            for content in result.content:
+                                if hasattr(content, 'text'):
+                                    preview = content.text[:500] + "..." if len(content.text) > 500 else content.text
+                                    self.console.print(f"[dim]{preview}[/dim]")
                     else:
                         self.console.print("[red]❌ Please provide a URL[/red]")
-                elif command == "screenshot":
-                    await self.call_tool("browserbase_take_screenshot", {})
-                    self.console.print("[green]✅ Screenshot taken[/green]")
-                elif command == "text":
-                    result = await self.call_tool("browserbase_get_text", {})
-                    self.console.print("[green]✅ Text extracted[/green]")
+                elif command.lower().startswith("news "):
+                    query = command[5:].strip()
+                    if query:
+                        result = await self.call_tool("google_search", {
+                            "query": query,
+                            "topic": "news",
+                            "maxResults": 5,
+                            "responseType": "text"
+                        })
+                        self.console.print(f"[green]✅ News search completed for '{query}'[/green]")
+                        if hasattr(result, 'content') and result.content:
+                            for content in result.content:
+                                if hasattr(content, 'text'):
+                                    preview = content.text[:500] + "..." if len(content.text) > 500 else content.text
+                                    self.console.print(f"[dim]{preview}[/dim]")
+                    else:
+                        self.console.print("[red]❌ Please provide a search query[/red]")
                 else:
-                    self.console.print("[yellow]❓ Unknown command. Try: navigate <url>, screenshot, text, or quit[/yellow]")
+                    self.console.print("[yellow]❓ Unknown command. Try: search <query>, fetch <url>, news <query>, or quit[/yellow]")
                     
             except KeyboardInterrupt:
                 break
@@ -220,7 +246,7 @@ async def main():
     
     console.print(Panel(
         "[bold cyan]🚀 Basic MCP Demo[/bold cyan]\n\n"
-        "This demo shows how to use the Browserbase MCP server directly\n"
+        "This demo shows how to use the Fetch-Browser MCP server directly\n"
         "without requiring Gemini AI. Perfect for testing your setup!",
         title="Welcome",
         border_style="cyan"
@@ -236,7 +262,7 @@ async def main():
         
         # Choose what to do
         console.print("\n[cyan]What would you like to do?[/cyan]")
-        console.print("1. Run automated demo (navigate to example.com)")
+        console.print("1. Run automated demo (Google search & URL fetch)")
         console.print("2. Interactive mode (manual tool testing)")
         console.print("3. Exit")
         

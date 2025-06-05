@@ -23,7 +23,7 @@ from mcp.client.stdio import stdio_client
 
 
 class MCPSurfClient:
-    """A client that integrates Gemini AI with Browserbase MCP for web browsing."""
+    """A client that integrates Gemini AI with Fetch-Browser MCP for web browsing."""
     
     def __init__(self):
         """Initialize the MCP Surf Client."""
@@ -47,36 +47,18 @@ class MCPSurfClient:
     
     def _prepare_env(self) -> Dict[str, str]:
         """Prepare environment variables for MCP server."""
-        browserbase_api_key = os.getenv("BROWSERBASE_API_KEY")
-        browserbase_project_id = os.getenv("BROWSERBASE_PROJECT_ID")
-        
-        if not browserbase_api_key or not browserbase_project_id:
-            self.console.print("[red]❌ Missing Browserbase credentials[/red]")
-            self.console.print("Please set BROWSERBASE_API_KEY and BROWSERBASE_PROJECT_ID in your .env file")
-            sys.exit(1)
-        
-        env = os.environ.copy()
-        env.update({
-            "BROWSERBASE_API_KEY": browserbase_api_key,
-            "BROWSERBASE_PROJECT_ID": browserbase_project_id,
-        })
-        
-        # Add context ID if provided
-        context_id = os.getenv("BROWSERBASE_CONTEXT_ID")
-        if context_id:
-            env["BROWSERBASE_CONTEXT_ID"] = context_id
-        
-        return env
+        # Fetch-Browser doesn't require API keys, just return the base environment
+        return os.environ.copy()
     
     async def _test_mcp_connection(self) -> bool:
         """Test MCP server connection and get available tools."""
         try:
-            self.console.print("[yellow]🚀 Testing Browserbase MCP server connection...[/yellow]")
+            self.console.print("[yellow]🚀 Testing Fetch-Browser MCP server connection...[/yellow]")
             
             env = self._prepare_env()
             server_params = StdioServerParameters(
-                command="npx",
-                args=["@browserbasehq/mcp"],
+                command="node",
+                args=["/Users/lgarciat-local/Dev/PERSONAL/fetch-browser/build/index.js"],
                 env=env
             )
             
@@ -104,8 +86,8 @@ class MCPSurfClient:
         """Execute a function with an active MCP connection."""
         env = self._prepare_env()
         server_params = StdioServerParameters(
-            command="npx",
-            args=["@browserbasehq/mcp"],
+            command="node",
+            args=["/Users/lgarciat-local/Dev/PERSONAL/fetch-browser/build/index.js"],
             env=env
         )
         
@@ -124,20 +106,67 @@ class MCPSurfClient:
             self.console.print(f"[red]❌ Error calling tool {tool_name}: {e}[/red]")
             raise
     
-    def create_tool_functions_for_gemini(self) -> List[Dict[str, Any]]:
+    def create_tool_functions_for_gemini(self) -> List[Any]:
         """Convert MCP tools to Gemini function calling format."""
-        gemini_tools = []
+        tools = []
         
         for tool in self.available_tools:
-            # Convert MCP tool schema to Gemini function declaration
-            function_declaration = {
-                "name": tool.name,
-                "description": tool.description,
-                "parameters": tool.inputSchema if hasattr(tool, 'inputSchema') else {"type": "object", "properties": {}}
-            }
-            gemini_tools.append(function_declaration)
+            if tool.name == "fetch_url":
+                function_declaration = genai.protos.FunctionDeclaration(
+                    name="fetch_url",
+                    description="Fetch content from a URL with proper error handling and response processing",
+                    parameters=genai.protos.Schema(
+                        type=genai.protos.Type.OBJECT,
+                        properties={
+                            "url": genai.protos.Schema(
+                                type=genai.protos.Type.STRING,
+                                description="The URL to fetch"
+                            ),
+                            "responseType": genai.protos.Schema(
+                                type=genai.protos.Type.STRING,
+                                description="Expected response type: text, json, html, markdown"
+                            ),
+                            "timeout": genai.protos.Schema(
+                                type=genai.protos.Type.NUMBER,
+                                description="Request timeout in milliseconds"
+                            )
+                        },
+                        required=["url"]
+                    )
+                )
+            elif tool.name == "google_search":
+                function_declaration = genai.protos.FunctionDeclaration(
+                    name="google_search",
+                    description="Execute a Google search and return results in various formats",
+                    parameters=genai.protos.Schema(
+                        type=genai.protos.Type.OBJECT,
+                        properties={
+                            "query": genai.protos.Schema(
+                                type=genai.protos.Type.STRING,
+                                description="The search query to execute"
+                            ),
+                            "responseType": genai.protos.Schema(
+                                type=genai.protos.Type.STRING,
+                                description="Expected response type: text, json, html, markdown"
+                            ),
+                            "maxResults": genai.protos.Schema(
+                                type=genai.protos.Type.NUMBER,
+                                description="Maximum number of results to return"
+                            ),
+                            "topic": genai.protos.Schema(
+                                type=genai.protos.Type.STRING,
+                                description="Type of search to perform: web or news"
+                            )
+                        },
+                        required=["query"]
+                    )
+                )
+            else:
+                continue  # Skip unknown tools
+            
+            tools.append(genai.protos.Tool(function_declarations=[function_declaration]))
         
-        return gemini_tools
+        return tools
     
     async def handle_function_call(self, session: ClientSession, function_call) -> str:
         """Handle a function call from Gemini."""
@@ -162,8 +191,14 @@ class MCPSurfClient:
                             content_parts.append(f"[Image captured: {content.mimeType}]")
                         else:
                             content_parts.append(f"[Binary data: {content.mimeType}]")
+                    else:
+                        # For simple string content
+                        content_parts.append(str(content))
                 
                 return "\n".join(content_parts) if content_parts else "Tool executed successfully"
+            elif result:
+                # If result is not None but doesn't have content, convert to string
+                return str(result)
             else:
                 return "Tool executed successfully"
                 
@@ -215,13 +250,13 @@ class MCPSurfClient:
     async def run_interactive(self) -> None:
         """Run an interactive chat session."""
         self.console.print(Panel(
-            "[bold cyan]🌐 MCP Surf Demo - Gemini + Browserbase[/bold cyan]\n\n"
-            "Ask me to browse websites, take screenshots, or analyze web content!\n\n"
+            "[bold cyan]🌐 MCP Surf Demo - Gemini + Fetch-Browser[/bold cyan]\n\n"
+            "Ask me to search Google, browse websites, or analyze web content!\n\n"
             "[dim]Examples:[/dim]\n"
-            "• Browse to https://example.com and tell me what you see\n"
-            "• Take a screenshot of the current page\n"
-            "• Navigate to Google and search for 'Python MCP'\n"
-            "• Extract all links from this webpage\n\n"
+            "• Search Google for 'Python MCP servers'\n"
+            "• Fetch content from https://example.com and summarize it\n"
+            "• Search for news about artificial intelligence\n"
+            "• Get the latest information from a specific URL\n\n"
             "[dim]Type 'quit' to exit[/dim]",
             title="Welcome",
             border_style="cyan"
@@ -230,7 +265,7 @@ class MCPSurfClient:
         while True:
             try:
                 # Get user input
-                user_input = Prompt.ask("[bold green]You[/bold green]")
+                user_input = Prompt.ask("[bold green]You[/bold green]", default="quit")
                 
                 if user_input.lower() in ['quit', 'exit', 'bye']:
                     break
